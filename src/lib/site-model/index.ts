@@ -12,6 +12,7 @@ import type { SiteItem } from '../../types/site';
 import { applyRepoMetaToCategories } from '../cache/projects.ts';
 import { getSubmenuForNavItem, resolveTemplateNameForPage } from '../config/page-template.ts';
 import { makeJsonSafeForHtmlScript } from '../config/runtime-config.ts';
+import { getCategoryChildren } from '../site-data/categories.ts';
 import { assignCategorySlugs } from '../config/slugs.ts';
 import { buildArticlesCategoriesByPageCategories, buildProjectsMeta } from './external-data.ts';
 import { normalizeText, toCardViewModel } from './card.ts';
@@ -33,7 +34,8 @@ function prepareNavigationData(config: ResolvedConfig, activePageId?: string): N
         isActive: activePageId ? nav.id === activePageId : Boolean(nav.isActive),
         active: activePageId ? nav.id === activePageId : Boolean(nav.active),
       };
-      const submenu = getSubmenuForNavItem(navItem, config);
+      // 显式 submenu 优先，页面分类只在未配置时兜底
+      const submenu = Array.isArray(navItem.submenu) ? null : getSubmenuForNavItem(navItem, config);
       if (submenu) navItem.submenu = submenu as NavigationItem['submenu'];
       return navItem;
     });
@@ -54,7 +56,13 @@ function prepareNavigationDataFromPages(
         active: activePageId ? nav.id === activePageId : Boolean(nav.active),
       };
       const page = byId.get(String(nav.id));
-      if (page && Array.isArray(page.categories) && page.categories.length > 0) {
+      // 显式 submenu 优先，页面分类只在未配置时兜底
+      if (
+        !Array.isArray(navItem.submenu) &&
+        page &&
+        Array.isArray(page.categories) &&
+        page.categories.length > 0
+      ) {
         navItem.submenu = page.categories as NavigationItem['submenu'];
       }
       return navItem;
@@ -165,26 +173,10 @@ function assignCardsToCategory(
   const categoryName = normalizeText(category.name);
   const categoryId = normalizeText(category.slug) || categoryName;
   const categoryPath = categoryName ? [...parentPath, categoryName] : parentPath;
-  const sites = Array.isArray(category.sites)
-    ? category.sites
-    : Array.isArray(category.items)
-      ? category.items
-      : [];
+  const sites = [...(category.sites ?? []), ...(category.items ?? [])];
 
-  if (Array.isArray(category.subcategories)) {
-    category.subcategories.forEach((child) => {
-      output.push(...assignCardsToCategory(pageId, child, config, style, categoryPath, type));
-    });
-  }
-  if (Array.isArray(category.groups)) {
-    category.groups.forEach((child) => {
-      output.push(...assignCardsToCategory(pageId, child, config, style, categoryPath, type));
-    });
-  }
-  if (Array.isArray(category.subgroups)) {
-    category.subgroups.forEach((child) => {
-      output.push(...assignCardsToCategory(pageId, child, config, style, categoryPath, type));
-    });
+  for (const { node } of getCategoryChildren(category)) {
+    output.push(...assignCardsToCategory(pageId, node, config, style, categoryPath, type));
   }
   if (sites.length > 0) {
     category.cards = sites

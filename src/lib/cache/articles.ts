@@ -6,6 +6,7 @@ import { createLogger } from '../logging/logger.ts';
 import { collectSitesRecursively, normalizeUrlKey } from '../site-data/sites.ts';
 
 type RenderConfigLike = {
+  snapshot?: { cacheDir?: string };
   site?: {
     rss?: {
       cacheDir?: unknown;
@@ -28,8 +29,10 @@ type ArticlesFeedCachePayload = {
   generatedAt?: unknown;
   stats?: {
     totalArticles?: unknown;
+    successSites?: unknown;
   };
   articles?: CacheArticleInput[];
+  sites?: Array<{ url?: unknown; status?: unknown }>;
 };
 
 type ArticleItem = SiteItem & {
@@ -49,6 +52,8 @@ type ArticlesFeedCache = {
     pageId: unknown;
     generatedAt: unknown;
     total: unknown;
+    successSites?: unknown;
+    successfulSourceUrls?: string[];
   };
 };
 
@@ -61,6 +66,7 @@ type ArticleCategory = {
 const log = createLogger('cache:articles');
 
 function getArticlesCacheDir(config: RenderConfigLike | null | undefined): string {
+  if (config?.snapshot?.cacheDir) return config.snapshot.cacheDir;
   const cacheDirFromEnv = process.env.RSS_CACHE_DIR ? String(process.env.RSS_CACHE_DIR) : '';
   const cacheDirFromConfig = config?.site?.rss?.cacheDir ? String(config.site.rss.cacheDir) : '';
   return cacheDirFromEnv || cacheDirFromConfig || 'dev';
@@ -85,7 +91,8 @@ function normalizeArticleItem(article: CacheArticleInput | null | undefined): Ar
 
 function tryLoadArticlesFeedCache(
   pageId: string,
-  config: RenderConfigLike | null | undefined
+  config: RenderConfigLike | null | undefined,
+  allowedSourceUrls?: Set<string> | null
 ): ArticlesFeedCache | null {
   if (!pageId) return null;
 
@@ -104,13 +111,29 @@ function tryLoadArticlesFeedCache(
       .map((article: CacheArticleInput) => normalizeArticleItem(article))
       .filter((item: ArticleItem | null): item is ArticleItem => Boolean(item));
 
+    // 按当前页面来源过滤，已删除来源的旧文章不再进入「其他」分类。
+    const visibleItems = allowedSourceUrls
+      ? items.filter((item) => allowedSourceUrls.has(normalizeUrlKey(item.sourceUrl)))
+      : items;
+
     return {
-      items,
+      items: visibleItems,
       meta: {
         pageId: parsed.pageId || pageId,
         generatedAt: parsed.generatedAt || '',
-        total:
-          parsed.stats && Number.isFinite(parsed.stats.totalArticles)
+        ...(parsed.stats?.successSites !== undefined
+          ? { successSites: parsed.stats.successSites }
+          : {}),
+        ...(Array.isArray(parsed.sites)
+          ? {
+              successfulSourceUrls: parsed.sites
+                .filter((site) => site.status === 'success' && typeof site.url === 'string')
+                .map((site) => String(site.url)),
+            }
+          : {}),
+        total: allowedSourceUrls
+          ? visibleItems.length
+          : parsed.stats && Number.isFinite(parsed.stats.totalArticles)
             ? parsed.stats.totalArticles
             : items.length,
       },

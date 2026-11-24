@@ -5,6 +5,7 @@ npm-debug.log*
 # 构建输出
 dist/
 dist-node/
+/.wrangler/
 .astro/
 .tsbuildinfo/
 public/assets/
@@ -14,6 +15,7 @@ public/menav-config.json
 public/search-index.json
 public/menav.svg
 public/favicon.ico
+public/.menav-snapshot-assets.json
 
 # IDE/编辑器配置
 .vscode/
@@ -29,10 +31,13 @@ public/favicon.ico
 Thumbs.db
 
 
-# 个人笔记
-docs/
+# 个人笔记（docs/ 为随仓库提交的文档中心）
 docs/local/
 docs/*.local.md
+
+# 本地文档与设计上下文
+docs-myself/
+.impeccable.md
 
 # 本地任务记录
 /task_plan.md
@@ -59,3 +64,6 @@ AGENTS.md
 /.claude
 /discord-style-navstation
 REVIEW.md
+
+# Playwright MCP 运行产物
+/.playwright-mcp/

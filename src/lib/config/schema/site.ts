@@ -1,6 +1,5 @@
 import type { z as ZodNamespace } from 'zod';
 import { z } from 'zod';
-import { pageConfigSchema } from './page.ts';
 import {
   fontsSchema,
   githubSchema,
@@ -22,6 +21,13 @@ const siteConfigSchema = z.strictObject({
   logo_text: z.string({ error: 'logo_text 必须是字符串' }).trim().optional(),
   logo: z.string({ error: 'logo 必须是字符串' }).nullable().optional(),
   footer: z.string({ error: 'footer 必须是字符串' }).optional(),
+  admin_url: z
+    .string({ error: 'admin_url 必须是字符串' })
+    .trim()
+    .refine((value) => value === '' || /^https?:\/\//i.test(value), {
+      error: 'admin_url 只支持 http/https 完整地址',
+    })
+    .optional(),
   icons: iconsSchema.optional(),
   security: securitySchema.optional(),
   theme: themeSchema.optional(),
@@ -42,14 +48,10 @@ const modularConfigSchema = z.strictObject({
   navigation: z.array(navigationItemSchema, { error: 'navigation 必须是数组' }),
 });
 
-const renderConfigSchema = modularConfigSchema.catchall(pageConfigSchema.or(z.unknown()));
-
 export type SiteConfigSchema = typeof siteConfigSchema;
 export type ModularConfigSchema = typeof modularConfigSchema;
-export type RenderConfigSchema = typeof renderConfigSchema;
 
 export type SiteConfig = ZodNamespace.output<SiteConfigSchema>;
 export type ModularConfig = ZodNamespace.output<ModularConfigSchema> & Record<string, unknown>;
-export type RenderConfig = ZodNamespace.output<RenderConfigSchema>;
 
-export { siteConfigSchema, modularConfigSchema, renderConfigSchema };
+export { siteConfigSchema, modularConfigSchema };

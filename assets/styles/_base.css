@@ -25,8 +25,6 @@
   border-radius: var(--radius-lg);
   background: var(--surface-frosted);
   border: 1px solid var(--border-color);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
   color: var(--text-color);
   display: flex;
   align-items: center;
@@ -54,6 +52,48 @@
   font-size: 18px;
 }
 
+/* 管理后台入口：位于右下角两个按钮上方 */
+.admin-toggle {
+  position: fixed;
+  bottom: 8rem;
+  right: var(--spacing-xl);
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: var(--radius-lg);
+  background: var(--surface-frosted);
+  border: 1px solid var(--border-color);
+  color: var(--text-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  transition-timing-function: var(--transition-bounce);
+  z-index: 100;
+  box-shadow: 0 4px 16px var(--shadow-color);
+}
+
+.admin-toggle:hover {
+  transform: translateY(-2px);
+  background: var(--surface-frosted-hover);
+  box-shadow: 0 6px 20px var(--shadow-color);
+  color: var(--accent-color);
+}
+
+.admin-toggle:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px var(--shadow-color);
+}
+
+.admin-toggle i {
+  font-size: 18px;
+}
+
+.admin-toggle svg {
+  width: 20px;
+  height: 20px;
+}
+
 /* 全局样式 */
 * {
   margin: 0;
@@ -67,11 +107,35 @@
   outline-offset: 2px;
 }
 
+/* 跳转主内容：默认移出视口，键盘聚焦时出现在左上角 */
+.skip-link {
+  position: fixed;
+  top: var(--spacing-sm);
+  left: var(--spacing-sm);
+  z-index: 2000;
+  padding: 0.6rem 1rem;
+  border: 2px solid var(--accent-color);
+  border-radius: var(--radius-md);
+  background-color: var(--sidebar-bg);
+  color: var(--text-bright);
+  text-decoration: none;
+  transform: translateY(calc(-100% - var(--spacing-md)));
+  transition: transform var(--transition-fast);
+}
+
+.skip-link:focus,
+.skip-link:focus-visible {
+  transform: translateY(0);
+  outline: 2px solid var(--accent-color);
+  outline-offset: 2px;
+}
+
 /* 导航项 Focus 样式 */
 .nav-item:focus-visible,
 .submenu-item:focus-visible,
 .site-card:focus-visible,
 .theme-toggle:focus-visible,
+.admin-toggle:focus-visible,
 .category-toggle:focus-visible,
 .menu-toggle:focus-visible,
 .search-toggle:focus-visible {
@@ -115,8 +179,8 @@ html {
   /* 改为hidden，移除强制显示的滚动条 */
   scrollbar-width: thin;
   /* Firefox */
-  /* 明确 rem 基准字号：便于用 rem 统一管理字号（1rem = 16px） */
-  font-size: 16px;
+  /* 跟随用户浏览器字号设置，避免强制 16px 覆盖无障碍缩放 */
+  font-size: 100%;
 }
 
 /* 搜索高亮样式 */
@@ -162,19 +226,9 @@ body {
   z-index: 1;
   overflow: hidden;
   /* 防止layout滚动 */
-  opacity: 0;
-  transition: opacity 0.3s ease;
-}
-
-/* 确保加载后立即显示 */
-body.loaded .layout {
-  opacity: 1;
 }
 
 /* 无 JS 兜底：脚本被禁用或加载失败时，页面仍可见、可滚动 */
-html.no-js .layout {
-  opacity: 1;
-}
 html.no-js body {
   overflow: auto;
 }
@@ -189,6 +243,8 @@ html.no-js .sidebar-content {
 /* 无 JS：移动端侧栏恒定可见（不再依赖 JS 切换 .active），作为静态导航 */
 html.no-js .sidebar {
   transform: translateX(0);
+  visibility: visible;
+  pointer-events: auto;
 }
 /* 无 JS：菜单切换按钮依赖 JS，禁用时无可点击行为，直接隐藏 */
 html.no-js .menu-toggle {

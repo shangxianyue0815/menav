@@ -77,8 +77,6 @@
   /* 固定高度 60px */
   margin-bottom: 0.8rem;
   /* 与下方按钮区域拉开间距 */
-  transition: padding 0.3s ease;
-  /* 添加padding过渡，避免突变 */
 }
 
 .logo-brand {
@@ -91,7 +89,7 @@
   /* 预留右侧折叠按钮空间 */
 }
 
-.logo-brand h1 {
+.logo-brand .logo-text {
   padding-left: 0;
 }
 
@@ -105,7 +103,7 @@
   display: none;
 }
 
-.logo h1 {
+.logo-text {
   font-size: 1.4rem;
   color: var(--text-bright);
   margin-bottom: 0;
@@ -211,15 +209,16 @@
   display: none;
 }
 
-/* 侧边栏：页面分类面板（容器本身可滚动，隐藏滚动条） */
+/* 侧边栏：页面分类面板（标题固定，分类列表独立滚动） */
 .sidebar-submenu-panel {
+  position: relative;
   flex: 1 1 auto;
   min-height: 0;
-  overflow-y: auto;
+  overflow: hidden;
   padding: 0 0 0.6rem;
   /* 移除顶部 padding，避免标题上方出现缝隙 */
-  scrollbar-width: none;
-  /* Firefox 隐藏滚动条 */
+  display: flex;
+  flex-direction: column;
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
@@ -241,19 +240,50 @@
     visibility 0s linear 0s;
 }
 
-.sidebar-submenu-panel::-webkit-scrollbar {
-  display: none;
-  /* Webkit 浏览器隐藏滚动条 */
-}
-
-/* 面板内的 submenu 始终可见（不依赖 wrapper.expanded） */
+/* 面板内的 submenu 始终可见（不依赖 wrapper.expanded），并承担滚动 */
 .sidebar-submenu-panel .submenu {
+  flex: 1 1 auto;
+  min-height: 0;
   max-height: none;
-  overflow: visible;
+  overflow-y: auto;
+  overflow-x: hidden;
   opacity: 1;
   visibility: visible;
   margin-left: 0;
   transition: none;
+  /* 原生滚动条在部分 Chromium 上会画箭头且无法定制，统一隐藏后由面板自绘指示条 */
+  scrollbar-width: none;
+  /* 底部渐隐提示下方还有内容，滚到底后由 is-scroll-at-end 取消 */
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 2rem), transparent);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 2rem), transparent);
+}
+
+.sidebar-submenu-panel .submenu::-webkit-scrollbar {
+  display: none;
+}
+
+.sidebar-submenu-panel .submenu.is-scroll-at-end {
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+
+/* 自绘滚动指示条：位置由 JS 写入的变量控制，悬停面板时显现 */
+.sidebar-submenu-panel::after {
+  content: '';
+  position: absolute;
+  top: var(--submenu-thumb-top, 0px);
+  right: 2px;
+  width: 3px;
+  height: var(--submenu-thumb-height, 0px);
+  border-radius: var(--radius-full);
+  background-color: var(--scrollbar-color);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s ease;
+}
+
+.sidebar-submenu-panel:hover::after {
+  opacity: 1;
 }
 
 /* 折叠状态下的内容区域调整 */
@@ -272,6 +302,13 @@
 
 .sidebar.collapsed .sidebar-submenu-panel {
   display: none;
+}
+
+/* 折叠态优先：断点往返时即使显示类残留，目录面板也不可见 */
+.sidebar.collapsed.submenu-panel-visible .sidebar-submenu-panel:not(:empty) {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
 }
 
 /* 收起侧边栏时，禁止当前激活页面的目录直接显示在按钮下方 */
@@ -297,19 +334,16 @@
   opacity: 0.8;
 }
 
-/* 当子菜单在面板中显示时：显示标题并固定在顶部 */
-.sidebar-submenu-panel .submenu-header {
+/* 面板内的标题留在滚动区外，滚动条从标题下方开始 */
+.sidebar-submenu-panel > .submenu-header {
   display: block;
-  position: sticky;
-  top: 0;
+  flex: 0 0 auto;
   margin-top: 0;
   margin-bottom: 0.2rem;
   /* 覆盖基础样式的 margin-bottom */
   background-color: var(--sidebar-bg);
   opacity: 1;
   /* 覆盖基础样式的半透明，确保背景完全不透明 */
-  z-index: 1;
-  /* 确保标题在滚动时覆盖下方内容 */
 }
 
 /* 子菜单项样式优化 */
@@ -321,7 +355,10 @@
   color: var(--nav-item-color);
   text-decoration: none;
   border-radius: var(--radius-md);
-  transition: all var(--transition-normal);
+  transition:
+    background-color var(--transition-normal),
+    color var(--transition-normal),
+    transform var(--transition-normal);
   margin-bottom: 2px;
   font-size: 0.95rem;
   position: relative;
@@ -347,8 +384,8 @@
 .submenu-item:hover {
   background-color: var(--secondary-bg);
   color: var(--text-bright);
-  padding-left: 1.2rem;
-  /* 悬浮时轻微右移增加动感 */
+  /* 用位移代替 padding 变化，避免触发布局 */
+  transform: translateX(0.2rem);
 }
 
 .submenu-item:hover i {
@@ -360,7 +397,7 @@
 /* 激活状态 */
 .submenu-item.active {
   background-color: var(--highlight-bg);
-  color: var(--accent-color);
+  color: var(--text-bright);
   font-weight: 500;
 }
 
@@ -383,7 +420,7 @@
 }
 
 /* 折叠状态下的Logo文本 */
-.sidebar.collapsed .logo h1 {
+.sidebar.collapsed .logo-text {
   opacity: 0;
   transform: translateX(-20px);
   width: 0;
@@ -516,7 +553,6 @@
   justify-content: center;
   align-items: center;
   margin-right: var(--spacing-md);
-  transition: margin var(--transition-normal);
 }
 
 .nav-item .nav-text {
@@ -618,16 +654,107 @@ body main.content.expanded {
   width: calc(100vw - var(--sidebar-collapsed-width));
 }
 
-/* 仅在交互时启用布局相关过渡，避免首帧闪烁 */
+/* 折叠会改变可用宽度，必然重排；只过渡颜色，避免动画布局属性 */
 .with-anim .sidebar {
-  transition:
-    width 0.3s ease,
-    background-color 0.3s ease;
+  transition: background-color 0.3s ease;
 }
 
 .with-anim main.content {
-  transition:
-    background-color 0.3s ease,
-    margin-left 0.3s ease,
-    width 0.3s ease;
+  transition: background-color 0.3s ease;
+}
+
+/* 低高度视口：侧栏内容整体可滚动，保证靠后的导航项可达；分类面板仍独立滚动 */
+@media (max-height: 640px) {
+  .sidebar-content {
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-color) transparent;
+  }
+
+  .sidebar-submenu-panel {
+    flex: 0 0 auto;
+    min-height: 10rem;
+    max-height: 60vh;
+  }
+}
+
+/* JS 加载前先按折叠态渲染首屏，避免短暂显示展开态 */
+html.sidebar-collapsed-preload .sidebar {
+  width: var(--sidebar-collapsed-width);
+  overflow-x: hidden;
+}
+
+html.sidebar-collapsed-preload .sidebar .logo {
+  padding: 1.2rem 0.5rem 0.6rem;
+  justify-content: center;
+}
+
+html.sidebar-collapsed-preload .sidebar .logo-image,
+html.sidebar-collapsed-preload .sidebar .logo-text,
+html.sidebar-collapsed-preload .sidebar .nav-item .nav-text,
+html.sidebar-collapsed-preload .sidebar .nav-item .external-icon,
+html.sidebar-collapsed-preload .sidebar .sidebar-footer,
+html.sidebar-collapsed-preload .sidebar .sidebar-submenu-panel,
+html.sidebar-collapsed-preload .sidebar .nav-item-wrapper > .submenu {
+  display: none;
+}
+
+html.sidebar-collapsed-preload .sidebar .nav-section {
+  gap: 0.4rem;
+  align-items: center;
+}
+
+html.sidebar-collapsed-preload .sidebar .nav-item {
+  padding: 0;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+html.sidebar-collapsed-preload .sidebar .nav-item .icon-container {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+html.sidebar-collapsed-preload .sidebar .section-title {
+  justify-content: center;
+  padding: 0.4rem 0;
+  text-align: center;
+}
+
+html.sidebar-collapsed-preload .sidebar .sidebar-content {
+  padding: 0 0.5rem;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+html.sidebar-collapsed-preload .sidebar .sidebar-social {
+  padding: 0.2rem 0.5rem 0.8rem;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+html.sidebar-collapsed-preload .sidebar .sidebar-toggle {
+  left: 50%;
+  right: auto;
+  transform: translate(-50%, -50%);
+}
+
+html.sidebar-collapsed-preload .sidebar .sidebar-toggle .toggle-icon {
+  transform: rotate(180deg);
+}
+
+html.sidebar-collapsed-preload main.content {
+  margin-left: var(--sidebar-collapsed-width);
+  width: calc(100vw - var(--sidebar-collapsed-width));
 }

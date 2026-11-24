@@ -2,6 +2,46 @@
 
 > 本文件维护 MeNav 历史更新记录。README 不再维护"更新记录"章节。
 
+### Unreleased
+
+**1. 动态后端（形态二）**
+
+- 新增 `workers/` 子项目：Cloudflare Worker + D1 动态后台（Hono 路由 + Access JWT 校验），提供页面/分类/站点 CRUD、批量排序、书签导入、种子导入与手动发布 API
+- D1 保存导航、正文、元数据、配置、图片和外部数据基线，种子整体替换需显式确认；大批量导入及版本递增在同一事务提交
+- 新增 `admin/` 管理控制台，随 Worker 部署并受 Access 保护，支持在线编辑、上下移动排序、四层分类调整、书签粘贴/上传、备份恢复、配置查看与发布状态
+- 管理台拆分为页面管理、站点设置、数据与备份三个页面，卡片标题与间距统一；站点图标支持自动 favicon、图标库、图片地址三种来源，页面导航与分类图标可在后台可视化选择
+- 图标清单与 Font Awesome 字体随 `admin/` 静态资源部署，管理台 CSP 不引入外部 CDN；选择器分批渲染，避免一次加载全部图标
+- 页面隐藏仅影响导航，链接和搜索仍可访问；可选字段可清空，跨窗口版本冲突保留当前输入；分类折叠开关与混合排序在公开站生效
+- 分类子节点跨 subcategories/groups/subgroups 按 `sort` 合并，`sites` 与 `items` 合并收集；同时使用这些字段的旧配置输出会变化，升级前请对照现有配置
+- 新增 `build:snapshot`，D1 JSON 复用现有 Astro 渲染；Pages 可读取 Git 应用代码，业务数据不读取仓库 YAML、Markdown 或缓存
+- 动态后台配置改为 `wrangler.example.jsonc`，真实 D1、Access 与 Pages 资源值不入库；主仓库定位为模板与示例站，个人使用建议独立仓库
+- 移除公开的 `/api/nav` 实时树接口；它没有消费者，且会带出隐藏页和未发布内容
+- 构建按 D1 配置刷新文章、GitHub 统计与贡献图，使用独立临时缓存；部分刷新失败保留对应来源的 D1 数据
+- Pages API 发布冻结版本，核对生产部署及产物标记后才推进已发布版本；发布仅由后台手动触发，构建期间编辑与失败重试不丢更新
+- 新增隔离 D1 集成测试、管理台浏览器测试与完整快照构建对比，接入 CI
+- 将开发工具的传递依赖 `fast-uri` 固定到 3.1.6，修复 URL 规范化相关高危审计项
+
+**2. 书签解析核心抽取**
+
+- 书签解析逻辑抽为 `src/lib/bookmarks/parser-core.ts` 共享核心（纯 JS、零 Node API、logger 可注入），形态一 `parser.ts` 与形态二 Worker 共用同一实现，解析语义一致
+- `parser.ts` 保留为形态一门面，历史 `require()` 接口不变，形态一零改动
+
+**3. 文档与工程**
+
+- 文档中心重构：README 收敛为入口，安装、AI 安装、动态后端、配置、书签和开发说明拆分为独立文档
+- 移除根目录 `Dockerfile.static`，将 `Dockerfile.dynamic` 移至 `docker/Dockerfile.dynamic`
+- 新增 `backend:init --with-test` / `--with-local`、`backend:dev:local`、`backend:verify`、`backend:check:configs`、`pages:create`、`pages:deploy`
+- 本地开发支持 `wrangler.local.jsonc` 与 `remote: false` 的本地 D1；doctor 支持 AUD 后补、测试配置隔离检查与资源存在性检查
+
+**4. 审计修复（2026-11-15）**
+
+- 管理 API 只接受身份型 Access JWT，服务令牌只能用于构建快照；发布任务增加总超时与 Pages API 明确错误恢复
+- 请求体上限统一为 16 MB，图片资产拆分为独立存储行并兼容旧备份，多图种子不再受单行 900 KB 限制
+- 同步失败保留上次成功缓存，成功来源覆盖、失败来源回退；补全同步抓取的保留网段与重定向校验
+- 修复运行时配置 `</script>` 转义、显式 slug/submenu 优先级、localStorage 异常降级与断点折叠状态
+- 静态资源保留 favicon/logo 相对路径并拒绝目录穿越；贡献图消毒器先解码后判定 URI
+- 工程链路：格式检查进入 CI、工作流权限最小化、Docker PR 构建、nginx 1.30、非 root 与健康检查
+
 ### 2026/01/04
 
 **1. 首屏性能优化**
@@ -40,7 +80,7 @@
 
 关联 Issue：[#30](https://github.com/rbetree/menav/issues/30)
 
-细节见：[`config/update-instructions-20260102.md`](config/update-instructions-20260102.md)
+细节见：[`docs/migrations/2026-01-02.md`](docs/migrations/2026-01-02.md)
 
 **1. 外部资源可用性**
 
@@ -59,7 +99,7 @@
 
 ### 2025/12/27
 
-细节见：[`config/update-instructions-20251227.md`](config/update-instructions-20251227.md)
+细节见：[`docs/migrations/2025-12-27.md`](docs/migrations/2025-12-27.md)
 
 **1. 页面模板差异化改进（Phase 1/Phase 2）**
 
